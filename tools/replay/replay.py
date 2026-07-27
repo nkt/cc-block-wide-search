@@ -21,6 +21,7 @@ import argparse
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -59,8 +60,16 @@ def bash_calls(path):
                 yield cwd, command
 
 
+ROOT = re.compile(r'^\w[\w ]* (?:scoped to|search of) "([^"]*)"')
+
+
 def verdict(hook, cwd, command):
-    """Return the hook's decision, or None when it stays silent (allowed)."""
+    """Return (decision, offending root), or None when the hook stays silent.
+
+    The root is pulled back out of the reason because a long command truncated
+    for display can easily hide the very token that triggered the block, which
+    turns an obvious true positive into a suspicious-looking one.
+    """
     payload = json.dumps(
         {"tool_name": "Bash", "cwd": cwd, "tool_input": {"command": command}}
     )
@@ -70,9 +79,11 @@ def verdict(hook, cwd, command):
     if not out:
         return None
     try:
-        return json.loads(out)["hookSpecificOutput"]["permissionDecision"]
+        decision = json.loads(out)["hookSpecificOutput"]
     except (ValueError, KeyError):
         return None
+    match = ROOT.match(decision.get("permissionDecisionReason", ""))
+    return decision["permissionDecision"], match.group(1) if match else "?"
 
 
 def main():
@@ -113,11 +124,12 @@ def main():
 
     blocked = []
     for cwd, command in seen:
-        decision = verdict(args.hook, cwd, command)
-        if decision:
-            blocked.append((decision, cwd, command, seen[(cwd, command)]))
+        result = verdict(args.hook, cwd, command)
+        if result:
+            decision, root = result
+            blocked.append((decision, root, cwd, command, seen[(cwd, command)]))
 
-    blocked_calls = sum(n for _, _, _, n in blocked)
+    blocked_calls = sum(b[-1] for b in blocked)
     print(f"transcripts:      {args.transcripts}")
     print(f"Bash calls:       {total}")
     print(f"unique commands:  {len(seen)}")
@@ -127,14 +139,26 @@ def main():
     if not blocked:
         return
     print("\n=== blocked commands — read these, do not just count them ===")
-    for decision, cwd, command, n in sorted(blocked, key=lambda b: -b[3]):
+    print("    the root in brackets is what tripped it; if that is not in the")
+    print("    visible part of the command, widen with --width 0\n")
+    for decision, root, cwd, command, n in sorted(blocked, key=lambda b: -b[-1]):
         if args.json:
-            print(json.dumps({"decision": decision, "cwd": cwd, "command": command, "seen": n}))
+            print(
+                json.dumps(
+                    {
+                        "decision": decision,
+                        "root": root,
+                        "cwd": cwd,
+                        "command": command,
+                        "seen": n,
+                    }
+                )
+            )
             continue
         flat = " ".join(command.split())
         if args.width:
             flat = flat[: args.width]
-        print(f"  [{decision}] x{n:<4} {flat}")
+        print(f"  [{decision} {root}] x{n:<4} {flat}")
 
 
 if __name__ == "__main__":
