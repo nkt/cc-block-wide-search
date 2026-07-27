@@ -121,6 +121,14 @@ calls through an earlier implementation.
 The hook always exits 0 and stays silent on anything it cannot parse. A crashing or overzealous hook
 would be worse than a missed search.
 
+## Checking it against your own history
+
+[`tools/replay/`](tools/replay) has the two scripts this was built with. `replay.py` runs every
+`Bash` call in your transcripts through the hook and prints what it would have blocked — the way to
+find false positives before they find you. `firings.py` shows where the hook actually fired and what
+the model did next, which is how the subagent bugs above were spotted in the first place. Neither
+needs anything but Python 3.
+
 ## License
 
 MIT
