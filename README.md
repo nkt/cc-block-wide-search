@@ -101,10 +101,12 @@ Everything worth changing is a map or a constant near the top of `main.go`:
 - `searchCmds` — the commands whose arguments name a place to walk.
 - `wideRoots` — what counts as too wide. Deliberately narrow; add `~/projects` here if you want
   cross-repo searches challenged too.
-- `denyBody` / `subTail` / `askFmt` / `subRepeatFmt` — the text the model reads. `denyBody` names
-  `~/.gradle/caches`, `~/.m2` and `/opt/homebrew` as legitimate out-of-project targets, because
-  every escalation in the recorded history turned out to be a hunt for a dependency jar. Swap those
-  for the caches your stack actually uses.
+- `denyBody` / `subTail` / `askFmt` / `subRepeatFmt` — the text the model reads. `denyBody` names a
+  package cache, a build directory and `node_modules` as legitimate out-of-project targets, because
+  that is what wide searches are almost always after. Replaying 52k historical calls, the 103 the
+  hook refuses split almost evenly between JVM jars, SwiftPM checkouts and another project's
+  `node_modules`. Swap the examples for whatever your stack actually uses — a hint naming the wrong
+  ecosystem is worse than no hint.
 
 State lives in `~/.claude/hooks/state/wide-search/<session>__<agent>`, one line per warned root, and
 is pruned after seven idle days.

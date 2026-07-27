@@ -45,14 +45,17 @@ type hookIn struct {
 	} `json:"tool_input"`
 }
 
-// denyBody explains the refusal. Naming the caches is not a detail: every
-// escalation in the recorded history was a hunt for a dependency jar, which
-// really is outside the project and really does have an address narrower than
-// a filesystem root.
+// denyBody explains the refusal. Naming the caches is not a detail: replaying
+// 52k historical calls, essentially every wide search was a hunt for dependency
+// source — jars, SwiftPM checkouts, node_modules of another project, crates.
+// All of that really is outside the project, and all of it has an address
+// narrower than a filesystem root. The three named here cover the ecosystems
+// evenly; swap them for whatever your stack actually uses.
 const denyBody = "Search scoped to %q — that is the whole disk or your home directory, not the project (%s). " +
 	"You almost certainly want the project instead: use a relative path, or name the subdirectory you need. " +
-	"If the target genuinely lives outside the project — a dependency jar, a build cache — name that directory " +
-	"rather than a root: ~/.gradle/caches, ~/.m2, /opt/homebrew. "
+	"If the target genuinely lives outside the project — dependency source, a build cache — name that " +
+	"directory rather than a root: a package cache (~/.gradle, ~/.m2, ~/.cargo), a build directory " +
+	"(~/Library/Developer/Xcode/DerivedData), or the dependency tree inside the project (node_modules). "
 
 const mainTail = "If this search must be global after all, run it again and it will be put to the user for confirmation."
 
@@ -64,7 +67,7 @@ const askFmt = "Global search of %q requested again after a scope warning. " +
 
 const subRepeatFmt = "Global search of %q was already refused in this agent. " +
 	"Retrying cannot escalate to the user from inside a subagent. " +
-	"Name a concrete directory (~/.gradle/caches, ~/.m2, the project itself), " +
+	"Name a concrete directory — a package cache, a build directory, or the project itself — " +
 	"or state in your result that the answer needs a search outside the project."
 
 // searchCmds are the commands whose arguments name a place to walk.
