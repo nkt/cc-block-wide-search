@@ -7,10 +7,13 @@
 //
 // "Already warned" is tracked per agent, not per session: subagents share their
 // parent's session id, so session-wide state made a subagent's first attempt
-// look like a repeat of a warning it never saw. Escalation also has to stay a
-// "deny" inside a subagent — there is nobody there to answer an "ask", and the
-// resulting refusal reaches the model stripped of this hook's reason, which is
-// strictly worse than the explanation it replaces.
+// look like a repeat of a warning it never saw. The discriminator has to be
+// agent_id; transcript_path looks like it would work and does not, because the
+// payload derives it from the session id and every subagent therefore reports
+// the parent's transcript. Escalation also has to stay a "deny" inside a
+// subagent — there is nobody there to answer an "ask", and the resulting
+// refusal reaches the model stripped of this hook's reason, which is strictly
+// worse than the explanation it replaces.
 //
 // This is a guardrail against wasted time, not a security boundary — anything
 // that hides the path from a plain reading of the command (variables, command
